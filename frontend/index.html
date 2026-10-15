@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Field Res</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.1.11"></script>
+  <style type="text/tailwindcss">
+    @theme {
+      --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+      --color-cancha-50: #ecfdf3;
+      --color-cancha-100: #d1fadf;
+      --color-cancha-200: #a6f4c5;
+      --color-cancha-500: #12b76a;
+      --color-cancha-600: #039855;
+      --color-cancha-700: #027a48;
+      --color-cancha-900: #054f31;
+      --color-pelota: #d9f99d;
+    }
+    @layer base {
+      button:not(:disabled) { cursor: pointer; }
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-slate-50 font-sans text-slate-900 antialiased">
+
+  <header class="relative overflow-hidden bg-cancha-900 text-white">
+    <div class="pointer-events-none absolute inset-0 opacity-20">
+      <div class="absolute -right-24 -top-24 size-72 rounded-full bg-pelota blur-3xl"></div>
+    </div>
+    <div class="relative mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6">
+      <div class="flex items-center gap-3">
+        <div class="grid size-10 place-items-center rounded-xl bg-pelota text-cancha-900">
+          <svg viewBox="0 0 24 24" class="size-6" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6c3.2 3.2 3.2 9.6 0 12.8M18.4 5.6c-3.2 3.2-3.2 9.6 0 12.8"/></svg>
+        </div>
+        <div>
+          <p class="text-lg font-bold leading-none">Field Res</p>
+          <p class="mt-1 text-xs text-cancha-100/80">Reservas de padel</p>
+        </div>
+      </div>
+      <div id="chip-usuario" class="hidden items-center gap-2 rounded-full bg-white/10 py-1.5 pl-3 pr-1.5 text-sm backdrop-blur">
+        <span id="chip-correo" class="max-w-40 truncate sm:max-w-none"></span>
+        <button id="btn-salir" class="rounded-full bg-white/15 px-2.5 py-1 text-xs font-medium hover:bg-white/25">Salir</button>
+      </div>
+    </div>
+    <div class="relative mx-auto max-w-6xl px-4 pb-10 pt-6 sm:px-6">
+      <h1 class="text-3xl font-extrabold tracking-tight sm:text-4xl">Tu cancha, a un clic</h1>
+      <p class="mt-2 max-w-xl text-cancha-100/90">Revisa la disponibilidad en tiempo real y reserva sin mensajes ni llamadas.</p>
+    </div>
+  </header>
+
+  <main class="mx-auto -mt-6 max-w-6xl px-4 pb-16 sm:px-6">
+
+    <section id="vista-login" class="relative mx-auto max-w-md rounded-2xl bg-white p-6 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200 sm:p-8">
+      <h2 class="text-xl font-bold">Empieza con tu correo</h2>
+      <p class="mt-1 text-sm text-slate-500">Lo usamos para guardar tus reservas y mandarte la confirmacion.</p>
+      <form id="form-usuario" class="mt-6 space-y-3">
+        <input id="correo" type="email" required autocomplete="email" placeholder="tu@correo.com"
+          class="w-full rounded-xl border-0 bg-slate-50 px-4 py-3 ring-1 ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cancha-500">
+        <button type="submit" class="w-full rounded-xl bg-cancha-600 px-4 py-3 font-semibold text-white shadow-sm transition hover:bg-cancha-700">Continuar</button>
+      </form>
+    </section>
+
+    <div id="vista-app" class="hidden">
+    <div class="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+
+      <section class="min-w-0 rounded-2xl bg-white p-5 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200 sm:p-7">
+        <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-cancha-600">
+          <span class="grid size-5 place-items-center rounded-full bg-cancha-100 text-[11px]">1</span> Elige la cancha
+        </div>
+        <div id="canchas" class="mt-3 grid gap-3 sm:grid-cols-3"></div>
+
+        <div class="mt-8 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-cancha-600">
+          <span class="grid size-5 place-items-center rounded-full bg-cancha-100 text-[11px]">2</span> Elige el dia
+        </div>
+        <div id="dias" class="-mx-1 mt-3 flex gap-2 overflow-x-auto px-1 pb-2 [scrollbar-width:thin]"></div>
+
+        <div class="mt-6 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-cancha-600">
+            <span class="grid size-5 place-items-center rounded-full bg-cancha-100 text-[11px]">3</span> Elige la hora
+          </div>
+          <div class="flex items-center gap-4 text-xs text-slate-500">
+            <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-full bg-cancha-500"></span>Libre</span>
+            <span class="flex items-center gap-1.5"><span class="size-2.5 rounded-full bg-slate-300"></span>Ocupado</span>
+          </div>
+        </div>
+        <div id="horarios" class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6"></div>
+
+        <div class="mt-8 flex flex-col gap-4 rounded-2xl bg-slate-50 p-4 ring-1 ring-slate-200 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p class="text-xs font-medium uppercase tracking-wider text-slate-500">Tu reserva</p>
+            <p id="resumen" class="mt-1 font-semibold text-slate-400">Elige un horario disponible</p>
+          </div>
+          <button id="btn-reservar" disabled
+            class="rounded-xl bg-cancha-600 px-6 py-3 font-semibold text-white shadow-sm transition hover:bg-cancha-700 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:shadow-none">
+            Reservar
+          </button>
+        </div>
+      </section>
+
+      <aside class="space-y-6 lg:sticky lg:top-6">
+        <section class="rounded-2xl bg-white p-5 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200">
+          <div class="flex items-center justify-between">
+            <h2 class="font-bold">Mis reservas</h2>
+            <button id="btn-recargar" title="Actualizar" class="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+              <svg viewBox="0 0 24 24" class="size-4" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/></svg>
+            </button>
+          </div>
+          <ul id="lista-reservas" class="mt-4 space-y-3"></ul>
+        </section>
+
+        <section class="rounded-2xl bg-gradient-to-br from-cancha-600 to-cancha-900 p-5 text-white shadow-xl shadow-cancha-900/20">
+          <h2 class="font-bold">Confirmaciones por correo</h2>
+          <p class="mt-1 text-sm text-cancha-100/90">Te avisamos cada vez que reservas o cancelas.</p>
+          <button id="btn-suscribir" class="mt-4 w-full rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-cancha-700 transition hover:bg-cancha-50">Activar avisos</button>
+        </section>
+      </aside>
+    </div>
+    </div>
+  </main>
+
+  <div id="aviso" class="pointer-events-none fixed inset-x-0 bottom-6 z-50 flex justify-center px-4 opacity-0 transition duration-300">
+    <div id="aviso-caja" class="flex items-center gap-3 rounded-xl bg-slate-900 px-4 py-3 text-sm font-medium text-white shadow-2xl">
+      <span id="aviso-icono"></span>
+      <span id="aviso-texto"></span>
+    </div>
+  </div>
+
+  <div id="modal" class="fixed inset-0 z-40 hidden items-center justify-center bg-slate-900/40 p-4 backdrop-blur-sm">
+    <div class="w-full max-w-sm rounded-2xl bg-white p-6 shadow-2xl">
+      <h3 class="text-lg font-bold">¿Cancelar la reserva?</h3>
+      <p id="modal-texto" class="mt-1 text-sm text-slate-500"></p>
+      <div class="mt-6 flex gap-3">
+        <button id="modal-no" class="flex-1 rounded-xl bg-slate-100 px-4 py-2.5 font-semibold text-slate-700 hover:bg-slate-200">Volver</button>
+        <button id="modal-si" class="flex-1 rounded-xl bg-red-600 px-4 py-2.5 font-semibold text-white hover:bg-red-700">Si, cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
