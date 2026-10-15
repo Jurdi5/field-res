@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Field Res</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="top">
+    <div class="wrap">
+      <h1>Field Res</h1>
+      <p>Reserva tu cancha de padel</p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <section class="card">
+      <h2>Tus datos</h2>
+      <form id="form-usuario" class="fila">
+        <input id="correo" type="email" placeholder="tu correo" required autocomplete="email">
+        <button type="submit">Continuar</button>
+      </form>
+      <p id="estado-usuario" class="nota"></p>
+      <button id="btn-suscribir" class="secundario" hidden>Recibir confirmaciones por correo</button>
+    </section>
+
+    <section class="card" id="seccion-reservar" hidden>
+      <h2>Reservar</h2>
+      <div class="campos">
+        <label>Cancha
+          <select id="cancha"></select>
+        </label>
+        <label>Fecha
+          <input id="fecha" type="date">
+        </label>
+      </div>
+      <div id="horarios" class="horarios"></div>
+      <div class="acciones">
+        <span id="seleccion" class="nota">Elige un horario disponible</span>
+        <button id="btn-reservar" disabled>Reservar</button>
+      </div>
+    </section>
+
+    <section class="card" id="seccion-mis-reservas" hidden>
+      <div class="titulo-fila">
+        <h2>Mis reservas</h2>
+        <button id="btn-recargar" class="secundario chico">Actualizar</button>
+      </div>
+      <ul id="lista-reservas" class="reservas"></ul>
+    </section>
+  </main>
+
+  <div id="aviso" class="aviso" role="status" hidden></div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

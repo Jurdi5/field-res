@@ -1,0 +1,121 @@
+:root {
+  --verde: #1f7a4d;
+  --verde-claro: #e6f4ec;
+  --gris: #6b7280;
+  --borde: #e5e7eb;
+  --fondo: #f6f7f9;
+  --rojo: #b42318;
+  --rojo-claro: #fdecea;
+  --texto: #111827;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--fondo);
+  color: var(--texto);
+}
+
+.wrap { max-width: 760px; margin: 0 auto; padding: 0 16px; }
+
+.top { background: var(--verde); color: #fff; padding: 24px 0; margin-bottom: 24px; }
+.top h1 { margin: 0; font-size: 28px; }
+.top p { margin: 4px 0 0; opacity: .85; }
+
+.card {
+  background: #fff;
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.card h2 { margin: 0 0 14px; font-size: 18px; }
+
+.fila { display: flex; gap: 8px; }
+.fila input { flex: 1; }
+
+.campos { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; color: var(--gris); }
+
+input, select {
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--texto);
+}
+
+button {
+  font: inherit;
+  padding: 10px 18px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--verde);
+  color: #fff;
+  cursor: pointer;
+}
+button:disabled { opacity: .45; cursor: not-allowed; }
+button.secundario { background: var(--verde-claro); color: var(--verde); }
+button.peligro { background: var(--rojo-claro); color: var(--rojo); }
+button.chico { padding: 6px 12px; font-size: 14px; }
+
+.nota { color: var(--gris); font-size: 14px; margin: 10px 0 0; }
+
+.horarios {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 8px;
+  min-height: 44px;
+}
+.horario {
+  padding: 10px 0;
+  background: #fff;
+  color: var(--texto);
+  border: 1px solid var(--borde);
+}
+.horario:hover:not(:disabled) { border-color: var(--verde); }
+.horario.elegido { background: var(--verde); color: #fff; border-color: var(--verde); }
+.horario:disabled { background: var(--fondo); color: var(--gris); text-decoration: line-through; opacity: 1; }
+
+.acciones { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; gap: 12px; }
+.acciones .nota { margin: 0; }
+
+.titulo-fila { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+.titulo-fila h2 { margin: 0; }
+
+.reservas { list-style: none; margin: 0; padding: 0; }
+.reservas li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-top: 1px solid var(--borde);
+  gap: 12px;
+}
+.reservas li:first-child { border-top: 0; }
+.reservas .detalle strong { display: block; }
+.reservas .detalle span { color: var(--gris); font-size: 14px; }
+.etiqueta { font-size: 12px; padding: 2px 8px; border-radius: 999px; margin-left: 6px; }
+.etiqueta.CONFIRMADA { background: var(--verde-claro); color: var(--verde); }
+.etiqueta.CANCELADA { background: var(--rojo-claro); color: var(--rojo); }
+
+.aviso {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  background: var(--texto);
+  color: #fff;
+  padding: 12px 18px;
+  border-radius: 8px;
+  max-width: calc(100% - 32px);
+}
+.aviso.error { background: var(--rojo); }
+
+@media (max-width: 520px) {
+  .campos { grid-template-columns: 1fr; }
+  .acciones { flex-direction: column; align-items: stretch; }
+}
