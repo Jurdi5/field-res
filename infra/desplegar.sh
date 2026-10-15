@@ -86,6 +86,17 @@ else
   echo "-> cancelar_reserva.py no esta en esta rama, se salta"
 fi
 
+# Flujo 3 (alta de canchas)
+CREAR_CANCHA=""
+for f in "$RAIZ/backend/crear_cancha.py" "$RAIZ/crear_cancha.py"; do
+  [[ -f "$f" ]] && CREAR_CANCHA="$f" && break
+done
+if [[ -n "$CREAR_CANCHA" ]]; then
+  desplegar_lambda "${PREFIJO}-crear-cancha" "$CREAR_CANCHA"
+else
+  echo "-> crear_cancha.py no esta en esta rama, se salta"
+fi
+
 echo "-> API $API_NOMBRE"
 API_ID="$(aws apigatewayv2 get-apis --query "Items[?Name=='${API_NOMBRE}'].ApiId | [0]" --output text)"
 if [[ "$API_ID" == "None" || -z "$API_ID" ]]; then
@@ -107,6 +118,12 @@ conectar_ruta "POST /suscripciones" "${PREFIJO}-suscribir"
 if [[ -n "$CANCELAR" ]]; then
   conectar_ruta "DELETE /reservas/{reservaId}" "${PREFIJO}-cancelar-reserva"
 fi
+
+# Conectar la ruta de tu flujo 3
+if [[ -n "$CREAR_CANCHA" ]]; then
+  conectar_ruta "POST /canchas" "${PREFIJO}-crear-cancha"
+fi
+
 
 API_URL="https://${API_ID}.execute-api.${AWS_REGION}.amazonaws.com"
 
