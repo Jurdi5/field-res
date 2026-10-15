@@ -144,7 +144,7 @@ pytest -q
 ## Flujos
 
 - [Flujo 1: crear reserva](docs/flujo1-crear-reserva.md)
-- Flujo 2: cancelar reserva
+- [Flujo 2: cancelar reserva](docs/flujo2-cancelar-reserva.md)
 - Flujo 3: administracion de canchas
 
 ## Estado
