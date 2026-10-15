@@ -48,23 +48,31 @@ docs/        Documentacion de cada flujo
 
 ## Desplegar en AWS Academy
 
-Los scripts estan pensados para correr en la terminal del Learner Lab, que ya tiene las credenciales configuradas. Usan el rol `LabRole` porque en Academy no se pueden crear roles de IAM.
+Los scripts estan pensados para correr en la terminal del Learner Lab, que ya tiene las credenciales configuradas. Usan el rol `LabRole` porque en Academy no se pueden crear roles de IAM, y la region `us-east-1`.
 
-1. Iniciar el lab (Start Lab) y abrir la terminal.
-2. Clonar el repo:
+1. Iniciar el lab (Start Lab), esperar a que el indicador este en verde y abrir la terminal.
+
+2. Verificar la cuenta y que exista el rol del lab:
 
    ```bash
-   git clone https://github.com/Jurdi5/field-res.git
+   aws sts get-caller-identity
+   aws iam get-role --role-name LabRole --query Role.Arn --output text
+   ```
+
+3. Clonar el repo (cambiar la rama si se quiere probar otra):
+
+   ```bash
+   git clone -b integracion-flujo1-flujo2 https://github.com/Jurdi5/field-res.git
    cd field-res
    ```
 
-3. Crear la infraestructura base (tablas, topico SNS, buckets y canchas de ejemplo):
+4. Crear la infraestructura base (tablas, topico SNS, buckets y canchas de ejemplo):
 
    ```bash
    bash infra/crear.sh
    ```
 
-4. Desplegar las Lambdas, la API y el frontend:
+5. Desplegar las Lambdas, la API y el frontend:
 
    ```bash
    bash infra/desplegar.sh
@@ -72,13 +80,37 @@ Los scripts estan pensados para correr en la terminal del Learner Lab, que ya ti
 
    Al final imprime la URL de la API y la del frontend.
 
-Los dos scripts se pueden correr varias veces. Para subir cambios de codigo basta con volver a correr `desplegar.sh`.
+6. Probar que la API responde (cambiar `<API>` por la URL del paso anterior):
 
-Para borrar todo:
+   ```bash
+   curl -s <API>/canchas
+   ```
+
+7. Abrir la URL del frontend, entrar con un correo y dar clic en **Activar avisos**. AWS manda un correo de confirmacion y hay que dar clic en **Confirm subscription**, si no, no llegan las notificaciones.
+
+### Actualizar
+
+Lo que crea `crear.sh` se queda entre sesiones del lab. Para subir cambios de codigo:
+
+```bash
+cd field-res
+git pull
+bash infra/desplegar.sh
+```
+
+Los dos scripts se pueden correr varias veces sin romper nada.
+
+### Borrar todo
 
 ```bash
 bash infra/borrar.sh
 ```
+
+### Problemas comunes
+
+- **Las credenciales expiraron:** la sesion del lab dura unas 4 horas. Hay que volver a dar Start Lab y abrir una terminal nueva.
+- **`AccessDenied` al crear un rol:** en Academy no se pueden crear roles; los scripts ya usan `LabRole`.
+- **No llegan los correos:** revisar spam y que la suscripcion este confirmada.
 
 ### Variables
 
