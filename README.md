@@ -1,170 +1,161 @@
-# Flujo 2: Cancelar reserva (Field Res)
+# Field Res
 
-Función Lambda que cancela la reserva de una cancha de pádel, libera el horario y notifica al usuario. Forma parte del proyecto Field Res (Proyecto Integrador de Desarrollo en la Nube, ITESO, otoño 2026).
+Plataforma de reservas en linea para canchas de padel. Centraliza la disponibilidad de las canchas, evita dobles reservas y notifica por correo cuando una reserva se confirma o se cancela.
 
-> Los campos marcados con `<TODO>` dependen de la infraestructura real. Reemplázalos antes de entregar.
+Proyecto Integrador de Desarrollo en la Nube, ITESO, otono 2026.
 
-## Qué hace
+| Integrante | Responsabilidad |
+|------------|-----------------|
+| Yair Emmanuel Arias Madera | Flujo 1: crear reserva + frontend |
+| Jorge Eduardo Urdiales | Flujo 2: cancelar reserva + CI/CD |
+| Carlos Francisco Cervantes Escatell | Flujo 3: administracion de canchas + monitoreo |
 
-1. Recibe `reservaId` (en la ruta) y `userId` (en el body) a través de API Gateway.
-2. Valida la entrada.
-3. Busca la reserva en DynamoDB y verifica que exista, que pertenezca al usuario y que siga activa.
-4. Verifica la ventana de cancelación (por defecto, al menos 1 hora antes de la reserva).
-5. Cambia el estado a `CANCELADA` y libera el horario en una sola transacción de DynamoDB.
-6. Publica un evento `CANCELADA` en el tópico SNS `reservas-eventos`, que se entrega por correo al usuario.
-
-## Servicios de AWS que usa
-
-| Servicio | Uso en este flujo |
-|----------|-------------------|
-| API Gateway | Expone el endpoint de cancelación |
-| Lambda | Ejecuta la lógica de negocio |
-| DynamoDB | Guarda la reserva y el bloqueo del horario |
-| SNS | Notifica la cancelación al usuario |
-| CloudWatch | Logs de la función y métricas |
-
-## Endpoint
+## Arquitectura
 
 ```
-DELETE /reservas/{reservaId}
-Content-Type: application/json
-
-{ "userId": "<USER_ID>" }
+ navegador ──> S3 (sitio estatico)
+     │
+     └──> API Gateway (HTTP API)
+             ├── POST   /reservas                          -> Lambda fieldres-crear-reserva
+             ├── GET    /reservas?userId=                  -> Lambda fieldres-consultas
+             ├── GET    /canchas                           -> Lambda fieldres-consultas
+             ├── GET    /canchas/{canchaId}/disponibilidad -> Lambda fieldres-consultas
+             ├── DELETE /reservas/{reservaId}              -> Lambda fieldres-cancelar-reserva
+             └── POST   /suscripciones                     -> Lambda fieldres-suscribir
+                                │
+          DynamoDB (reservas, slots, canchas)   SNS reservas-eventos ──> correo
 ```
 
-### Respuestas
+| Servicio | Uso |
+|----------|-----|
+| Lambda | Logica de cada flujo, se paga por invocacion |
+| API Gateway (HTTP API) | Expone las Lambdas como endpoints REST con CORS |
+| DynamoDB | Reservas, horarios ocupados (slots) y canchas |
+| SNS | Notificaciones por correo de reservas confirmadas y canceladas |
+| S3 | Sitio estatico del frontend y fotos de las canchas |
+| CloudWatch | Logs de las Lambdas |
 
-| Código | Caso |
-|--------|------|
-| 200 | Reserva cancelada |
-| 400 | Falta `reservaId` o `userId` |
-| 403 | La reserva pertenece a otro usuario |
-| 404 | La reserva no existe |
-| 409 | Ya estaba cancelada, está fuera de la ventana de cancelación o se canceló al mismo tiempo |
-| 500 | Error interno |
+## Estructura
 
-## Modelo de datos esperado
+```
+backend/     Lambdas en Python 3.12
+frontend/    Sitio estatico (HTML, CSS y JS sin dependencias)
+infra/       Scripts en bash para crear la infraestructura y desplegar
+local/       Servidor para correr todo en local con AWS simulado
+tests/       Pruebas con pytest + moto
+docs/        Documentacion de cada flujo
+```
 
-**Tabla de reservas** (llave: `reservaId`)
+## Desplegar en AWS Academy
 
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| `reservaId` | String | Identificador de la reserva |
-| `userId` | String | Dueño de la reserva |
-| `canchaId` | String | Cancha reservada |
-| `fechaHora` | String | Fecha y hora en ISO 8601 (UTC) |
-| `estado` | String | `CONFIRMADA` o `CANCELADA` |
-| `canceladaEn` | String | Se agrega al cancelar |
+Los scripts estan pensados para correr en la terminal del Learner Lab, que ya tiene las credenciales configuradas. Usan el rol `LabRole` porque en Academy no se pueden crear roles de IAM, y la region `us-east-1`.
 
-**Tabla de slots** (llave: `canchaId` + `fechaHora`): un item por horario ocupado. Al cancelar se elimina para que el horario vuelva a estar disponible.
+1. Iniciar el lab (Start Lab), esperar a que el indicador este en verde y abrir la terminal.
 
-## Variables de entorno
+2. Verificar la cuenta y que exista el rol del lab:
 
-| Variable | Descripción |
-|----------|-------------|
-| `TABLA_RESERVAS` | Nombre de la tabla de reservas |
-| `TABLA_SLOTS` | Nombre de la tabla de horarios ocupados |
-| `TOPIC_ARN` | ARN del tópico SNS `reservas-eventos` |
-| `HORAS_MIN_CANCELACION` | Opcional. Horas mínimas de anticipación (por defecto 1) |
+   ```bash
+   aws sts get-caller-identity
+   aws iam get-role --role-name LabRole --query Role.Arn --output text
+   ```
 
-## Permisos IAM del rol de la Lambda
+3. Clonar el repo (cambiar la rama si se quiere probar otra):
 
-- `dynamodb:GetItem` y `dynamodb:UpdateItem` sobre la tabla de reservas
-- `dynamodb:DeleteItem` sobre la tabla de slots
-- `sns:Publish` sobre el tópico
-- Permisos de logs de CloudWatch (incluidos en el rol básico de Lambda)
+   ```bash
+   git clone -b integracion-flujo1-flujo2 https://github.com/Jurdi5/field-res.git
+   cd field-res
+   ```
 
-## Despliegue
+4. Crear la infraestructura base (tablas, topico SNS, buckets y canchas de ejemplo):
 
-Requisitos: AWS CLI v2 configurado (`aws configure`), `zip` y las tablas y el tópico SNS ya creados.
+   ```bash
+   bash infra/crear.sh
+   ```
+
+5. Desplegar las Lambdas, la API y el frontend:
+
+   ```bash
+   bash infra/desplegar.sh
+   ```
+
+   Al final imprime la URL de la API y la del frontend.
+
+6. Probar que la API responde (cambiar `<API>` por la URL del paso anterior):
+
+   ```bash
+   curl -s <API>/canchas
+   ```
+
+7. Abrir la URL del frontend, entrar con un correo y dar clic en **Activar avisos**. AWS manda un correo de confirmacion y hay que dar clic en **Confirm subscription**, si no, no llegan las notificaciones.
+
+### Actualizar
+
+Lo que crea `crear.sh` se queda entre sesiones del lab. Para subir cambios de codigo:
 
 ```bash
-zip cancelar_reserva.zip cancelar_reserva.py
-
-aws lambda create-function \
-  --function-name cancelar-reserva \
-  --runtime python3.12 \
-  --handler cancelar_reserva.lambda_handler \
-  --role <ARN_DEL_ROL_LAMBDA> \
-  --zip-file fileb://cancelar_reserva.zip \
-  --environment "Variables={TABLA_RESERVAS=<TABLA_RESERVAS>,TABLA_SLOTS=<TABLA_SLOTS>,TOPIC_ARN=<ARN_TOPICO_SNS>,HORAS_MIN_CANCELACION=1}"
+cd field-res
+git pull
+bash infra/desplegar.sh
 ```
 
-Para actualizar el código:
+Los dos scripts se pueden correr varias veces sin romper nada.
+
+### Borrar todo
 
 ```bash
-aws lambda update-function-code \
-  --function-name cancelar-reserva \
-  --zip-file fileb://cancelar_reserva.zip
+bash infra/borrar.sh
 ```
 
-### API Gateway
+### Problemas comunes
 
-Crear la ruta `DELETE /reservas/{reservaId}` con integración proxy hacia la Lambda `cancelar-reserva`, y habilitar CORS si el frontend está en otro origen. Después desplegar la API en un stage `<TODO: nombre del stage>`.
+- **Las credenciales expiraron:** la sesion del lab dura unas 4 horas. Hay que volver a dar Start Lab y abrir una terminal nueva.
+- **`AccessDenied` al crear un rol:** en Academy no se pueden crear roles; los scripts ya usan `LabRole`.
+- **No llegan los correos:** revisar spam y que la suscripcion este confirmada.
 
-### Notificaciones
+### Variables
 
-Suscribir un correo al tópico y confirmar el mensaje que llega a la bandeja:
+Se definen en `infra/config.sh`. Las que se pueden sobreescribir al correr los scripts:
+
+| Variable | Default |
+|----------|---------|
+| `AWS_REGION` | `us-east-1` |
+| `PREFIJO` | `fieldres` |
+| `ROLE_ARN` | `arn:aws:iam::<cuenta>:role/LabRole` |
+
+## Correr en local
+
+No necesita cuenta de AWS, DynamoDB y SNS se simulan con moto.
 
 ```bash
-aws sns subscribe \
-  --topic-arn <ARN_TOPICO_SNS> \
-  --protocol email \
-  --notification-endpoint <correo@ejemplo.com>
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-dev.txt
+python local/servidor.py
 ```
 
-Sin la confirmación no llegan notificaciones, y las suscripciones sin confirmar caducan a los 3 días.
+Abrir http://localhost:8000
 
-## Cómo probarlo
+Pruebas:
 
 ```bash
-curl -X DELETE "https://<API_ID>.execute-api.<REGION>.amazonaws.com/<STAGE>/reservas/<RESERVA_ID>" \
-  -H "Content-Type: application/json" \
-  -d '{"userId": "<USER_ID>"}'
+pytest -q
 ```
 
-Verificación esperada:
+## Flujos
 
-1. La respuesta es `200` con el mensaje "Reserva cancelada".
-2. En DynamoDB, la reserva tiene `estado = CANCELADA` y el campo `canceladaEn`.
-3. El item del horario ya no existe en la tabla de slots.
-4. Llega el correo de cancelación al usuario suscrito.
-5. Repetir la misma petición devuelve `409`.
+- [Flujo 1: crear reserva](docs/flujo1-crear-reserva.md)
+- [Flujo 2: cancelar reserva](docs/flujo2-cancelar-reserva.md)
+- Flujo 3: administracion de canchas
 
-## Evento SNS publicado
-
-Mensaje:
-
-```json
-{
-  "reservaId": "...",
-  "userId": "...",
-  "canchaId": "...",
-  "fechaHora": "...",
-  "tipo": "CANCELADA"
-}
-```
-
-Atributos del mensaje: `tipo = CANCELADA` y `userId`, que permiten filtrar suscripciones por usuario o por tipo de evento.
-
-## Decisiones técnicas
-
-- **Transacción en DynamoDB:** cambiar el estado y liberar el horario ocurre de forma atómica, para que nunca quede una reserva cancelada con el horario aún bloqueado.
-- **Condición `estado = CONFIRMADA`:** si dos cancelaciones llegan al mismo tiempo, solo una se aplica y la otra recibe `409`.
-- **Notificación desacoplada:** si SNS falla, la cancelación no se revierte y el error se registra en CloudWatch Logs.
-- **SNS en lugar de SES:** el correo se entrega con suscripciones por email de SNS, con filtros por atributo.
-- **Validación de propiedad:** solo el dueño de la reserva puede cancelarla.
-
-## Estado actual
+## Estado
 
 | Componente | Estado |
 |------------|--------|
-| Lambda `cancelar-reserva` | `<TODO: en la nube / local>` |
-| Ruta en API Gateway | `<TODO>` |
-| Notificación por correo (SNS) | `<TODO>` |
-
-### Pendiente
-
-- Lista de espera al cancelar (cola SQS suscrita al tópico)
-- Pruebas unitarias
-- Métricas y alarmas en CloudWatch
+| Infraestructura base (scripts bash) | listo |
+| Flujo 1: crear reserva, disponibilidad, mis reservas | listo |
+| Frontend en S3 | listo |
+| Suscripcion por correo (SNS) | listo |
+| Flujo 2: cancelar reserva | en progreso |
+| Flujo 3: alta de canchas con fotos | pendiente |
+| CI/CD con GitHub Actions | pendiente |
+| Monitoreo (metricas, alarmas, dashboard) | pendiente |
