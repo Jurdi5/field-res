@@ -19,11 +19,13 @@ Proyecto Integrador de Desarrollo en la Nube, ITESO, otono 2026.
              ├── POST   /reservas                          -> Lambda fieldres-crear-reserva
              ├── GET    /reservas?userId=                  -> Lambda fieldres-consultas
              ├── GET    /canchas                           -> Lambda fieldres-consultas
+             ├── POST   /canchas                           -> Lambda fieldres-crear-cancha
              ├── GET    /canchas/{canchaId}/disponibilidad -> Lambda fieldres-consultas
              ├── DELETE /reservas/{reservaId}              -> Lambda fieldres-cancelar-reserva
              └── POST   /suscripciones                     -> Lambda fieldres-suscribir
                                 │
           DynamoDB (reservas, slots, canchas)   SNS reservas-eventos ──> correo
+          S3 fieldres-fotos (fotos de canchas)
 ```
 
 | Servicio | Uso |
@@ -62,11 +64,11 @@ Los scripts estan pensados para correr en la terminal del Learner Lab, que ya ti
 3. Clonar el repo (cambiar la rama si se quiere probar otra):
 
    ```bash
-   git clone -b integracion-flujo1-flujo2 https://github.com/Jurdi5/field-res.git
+   git clone https://github.com/Jurdi5/field-res.git
    cd field-res
    ```
 
-4. Crear la infraestructura base (tablas, topico SNS, buckets y canchas de ejemplo):
+4. Crear la infraestructura base (tablas, topico SNS, buckets y canchas de ejemplo). Si ya existia de antes, hay que correrlo otra vez para que las fotos de las canchas sean visibles:
 
    ```bash
    bash infra/crear.sh
@@ -124,7 +126,7 @@ Se definen en `infra/config.sh`. Las que se pueden sobreescribir al correr los s
 
 ## Correr en local
 
-No necesita cuenta de AWS, DynamoDB y SNS se simulan con moto.
+No necesita cuenta de AWS, DynamoDB, SNS y S3 se simulan con moto. Los datos viven en memoria y se pierden al detener el servidor.
 
 ```bash
 python3 -m venv .venv
@@ -145,7 +147,7 @@ pytest -q
 
 - [Flujo 1: crear reserva](docs/flujo1-crear-reserva.md)
 - [Flujo 2: cancelar reserva](docs/flujo2-cancelar-reserva.md)
-- Flujo 3: administracion de canchas
+- [Flujo 3: alta de canchas con fotos](docs/flujo3-alta-canchas.md)
 
 ## Estado
 
@@ -155,7 +157,7 @@ pytest -q
 | Flujo 1: crear reserva, disponibilidad, mis reservas | listo |
 | Frontend en S3 | listo |
 | Suscripcion por correo (SNS) | listo |
-| Flujo 2: cancelar reserva | en progreso |
-| Flujo 3: alta de canchas con fotos | pendiente |
+| Flujo 2: cancelar reserva | listo |
+| Flujo 3: alta de canchas con fotos | listo |
 | CI/CD con GitHub Actions | pendiente |
 | Monitoreo (metricas, alarmas, dashboard) | pendiente |
