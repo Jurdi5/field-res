@@ -109,4 +109,5 @@ aws s3 sync "$BUILD/web" "s3://${BUCKET_FRONTEND}" --delete --cache-control "no-
 
 echo
 echo "API:      $API_URL"
-echo "Frontend: http://${BUCKET_FRONTEND}.s3-website-${AWS_REGION}.amazonaws.com"
+echo "Frontend: https://${BUCKET_FRONTEND}.s3.${AWS_REGION}.amazonaws.com/index.html"
+echo "          http://${BUCKET_FRONTEND}.s3-website-${AWS_REGION}.amazonaws.com (si una red bloquea http, usar la de arriba)"
