@@ -1,4 +1,4 @@
-"""Corre la API y el frontend en local con DynamoDB y SNS simulados (moto).
+"""Corre la API y el frontend en local con DynamoDB, SNS y S3 simulados (moto).
 
     pip install -r requirements-dev.txt
     python local/servidor.py
@@ -24,6 +24,8 @@ os.environ.update({
     "TABLA_RESERVAS": "fieldres-reservas",
     "TABLA_SLOTS": "fieldres-slots",
     "TABLA_CANCHAS": "fieldres-canchas",
+    "BUCKET_FOTOS": "fieldres-fotos",
+    "FOTOS_URL_BASE": "/fotos",
 })
 
 from moto import mock_aws  # noqa: E402
@@ -79,20 +81,21 @@ for cid, nombre, tipo, precio in [
         "canchaId": {"S": cid}, "nombre": {"S": nombre}, "tipo": {"S": tipo},
         "precioHora": {"N": precio}, "activa": {"BOOL": True},
     })
+s3 = boto3.client("s3")
+s3.create_bucket(Bucket="fieldres-fotos")
 os.environ["TOPIC_ARN"] = boto3.client("sns").create_topic(Name="reservas-eventos")["TopicArn"]
 
 crear_reserva = importlib.import_module("crear_reserva")
 consultas = importlib.import_module("consultas")
 suscribir = importlib.import_module("suscribir")
-try:
-    cancelar_reserva = importlib.import_module("cancelar_reserva")
-except ModuleNotFoundError:
-    cancelar_reserva = None
+cancelar_reserva = importlib.import_module("cancelar_reserva")
+crear_cancha = importlib.import_module("crear_cancha")
 
 RUTAS = [
     ("POST", r"/reservas", "POST /reservas", crear_reserva),
     ("GET", r"/reservas", "GET /reservas", consultas),
     ("GET", r"/canchas", "GET /canchas", consultas),
+    ("POST", r"/canchas", "POST /canchas", crear_cancha),
     ("GET", r"/canchas/(?P<canchaId>[^/]+)/disponibilidad", "GET /canchas/{canchaId}/disponibilidad", consultas),
     ("POST", r"/suscripciones", "POST /suscripciones", suscribir),
     ("DELETE", r"/reservas/(?P<reservaId>[^/]+)", "DELETE /reservas/{reservaId}", cancelar_reserva),
@@ -107,14 +110,14 @@ class Handler(SimpleHTTPRequestHandler):
         url = urlparse(self.path)
         if url.path == "/config.js":
             return self._enviar(200, 'window.FIELDRES_API = "/api";', "application/javascript")
+        if url.path.startswith("/fotos/"):
+            return self._foto(url.path[len("/fotos/"):])
         if not url.path.startswith("/api/"):
             return False
         ruta = url.path[4:]
         for m, patron, route_key, modulo in RUTAS:
             match = re.fullmatch(patron, ruta)
             if m == metodo and match:
-                if modulo is None:
-                    return self._enviar(501, json.dumps({"error": "cancelar_reserva.py no esta en esta rama"}))
                 largo = int(self.headers.get("Content-Length") or 0)
                 event = {
                     "routeKey": route_key,
@@ -126,8 +129,15 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._enviar(res["statusCode"], res["body"])
         return self._enviar(404, json.dumps({"error": "Ruta no encontrada"}))
 
+    def _foto(self, llave):
+        try:
+            obj = s3.get_object(Bucket="fieldres-fotos", Key=llave)
+        except s3.exceptions.NoSuchKey:
+            return self._enviar(404, json.dumps({"error": "Foto no encontrada"}))
+        return self._enviar(200, obj["Body"].read(), obj["ContentType"])
+
     def _enviar(self, status, body, tipo="application/json"):
-        data = body.encode()
+        data = body if isinstance(body, bytes) else body.encode()
         self.send_response(status)
         self.send_header("Content-Type", tipo)
         self.send_header("Content-Length", str(len(data)))
