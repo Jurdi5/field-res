@@ -9,7 +9,7 @@ read -r -p "se va a borrar toda la infraestructura de ${PREFIJO} en ${ACCOUNT_ID
 API_ID="$(aws apigatewayv2 get-apis --query "Items[?Name=='${API_NOMBRE}'].ApiId | [0]" --output text)"
 [[ "$API_ID" != "None" && -n "$API_ID" ]] && aws apigatewayv2 delete-api --api-id "$API_ID" && echo "-> api borrada"
 
-for f in crear-reserva consultas suscribir cancelar-reserva; do
+for f in crear-reserva consultas suscribir cancelar-reserva crear-cancha; do
   aws lambda delete-function --function-name "${PREFIJO}-${f}" 2>/dev/null && echo "-> lambda ${PREFIJO}-${f} borrada"
 done
 

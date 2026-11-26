@@ -7,7 +7,7 @@ source "$(dirname "$0")/config.sh"
 BUILD="$(mktemp -d)"
 trap 'rm -rf "$BUILD"' EXIT
 
-ENV_COMUN="TABLA_RESERVAS=${TABLA_RESERVAS},TABLA_SLOTS=${TABLA_SLOTS},TABLA_CANCHAS=${TABLA_CANCHAS},TOPIC_ARN=${TOPIC_ARN},INDICE_USUARIO=${INDICE_USUARIO},UTC_OFFSET=${UTC_OFFSET},HORA_APERTURA=${HORA_APERTURA},HORA_CIERRE=${HORA_CIERRE}"
+ENV_COMUN="TABLA_RESERVAS=${TABLA_RESERVAS},TABLA_SLOTS=${TABLA_SLOTS},TABLA_CANCHAS=${TABLA_CANCHAS},TOPIC_ARN=${TOPIC_ARN},INDICE_USUARIO=${INDICE_USUARIO},UTC_OFFSET=${UTC_OFFSET},HORA_APERTURA=${HORA_APERTURA},HORA_CIERRE=${HORA_CIERRE},BUCKET_FOTOS=${BUCKET_FOTOS}"
 
 desplegar_lambda() {
   local nombre="$1" archivo="$2"
@@ -75,27 +75,9 @@ desplegar_lambda "${PREFIJO}-crear-reserva" "$RAIZ/backend/crear_reserva.py"
 desplegar_lambda "${PREFIJO}-consultas" "$RAIZ/backend/consultas.py"
 desplegar_lambda "${PREFIJO}-suscribir" "$RAIZ/backend/suscribir.py"
 
-# Flujo 2 (cancelar), si ya esta en la rama
-CANCELAR=""
-for f in "$RAIZ/backend/cancelar_reserva.py" "$RAIZ/cancelar_reserva.py"; do
-  [[ -f "$f" ]] && CANCELAR="$f" && break
-done
-if [[ -n "$CANCELAR" ]]; then
-  desplegar_lambda "${PREFIJO}-cancelar-reserva" "$CANCELAR"
-else
-  echo "-> cancelar_reserva.py no esta en esta rama, se salta"
-fi
-
-# Flujo 3 (alta de canchas)
-CREAR_CANCHA=""
-for f in "$RAIZ/backend/crear_cancha.py" "$RAIZ/crear_cancha.py"; do
-  [[ -f "$f" ]] && CREAR_CANCHA="$f" && break
-done
-if [[ -n "$CREAR_CANCHA" ]]; then
-  desplegar_lambda "${PREFIJO}-crear-cancha" "$CREAR_CANCHA"
-else
-  echo "-> crear_cancha.py no esta en esta rama, se salta"
-fi
+# Flujo 2 (cancelar) y flujo 3 (alta de canchas)
+desplegar_lambda "${PREFIJO}-cancelar-reserva" "$RAIZ/backend/cancelar_reserva.py"
+desplegar_lambda "${PREFIJO}-crear-cancha" "$RAIZ/backend/crear_cancha.py"
 
 echo "-> API $API_NOMBRE"
 API_ID="$(aws apigatewayv2 get-apis --query "Items[?Name=='${API_NOMBRE}'].ApiId | [0]" --output text)"
@@ -115,15 +97,8 @@ conectar_ruta "GET /reservas" "${PREFIJO}-consultas"
 conectar_ruta "GET /canchas" "${PREFIJO}-consultas"
 conectar_ruta "GET /canchas/{canchaId}/disponibilidad" "${PREFIJO}-consultas"
 conectar_ruta "POST /suscripciones" "${PREFIJO}-suscribir"
-if [[ -n "$CANCELAR" ]]; then
-  conectar_ruta "DELETE /reservas/{reservaId}" "${PREFIJO}-cancelar-reserva"
-fi
-
-# Conectar la ruta de tu flujo 3
-if [[ -n "$CREAR_CANCHA" ]]; then
-  conectar_ruta "POST /canchas" "${PREFIJO}-crear-cancha"
-fi
-
+conectar_ruta "DELETE /reservas/{reservaId}" "${PREFIJO}-cancelar-reserva"
+conectar_ruta "POST /canchas" "${PREFIJO}-crear-cancha"
 
 API_URL="https://${API_ID}.execute-api.${AWS_REGION}.amazonaws.com"
 

@@ -2,7 +2,7 @@
 
 Función Lambda que cancela la reserva de una cancha de pádel, libera el horario y notifica al usuario. Forma parte del proyecto Field Res (Proyecto Integrador de Desarrollo en la Nube, ITESO, otoño 2026).
 
-> Los campos marcados con `<TODO>` dependen de la infraestructura real. Reemplázalos antes de entregar.
+Desde el frontend: en **Mis reservas**, las reservas confirmadas y futuras tienen el botón **Cancelar reserva**. Al confirmar, la reserva pasa a "Cancelada", el horario vuelve a aparecer libre y llega el correo de cancelación.
 
 ## Qué hace
 
@@ -64,8 +64,10 @@ Content-Type: application/json
 |----------|-------------|
 | `TABLA_RESERVAS` | Nombre de la tabla de reservas |
 | `TABLA_SLOTS` | Nombre de la tabla de horarios ocupados |
+| `TABLA_CANCHAS` | Tabla de canchas, para poner el nombre de la cancha en el correo |
 | `TOPIC_ARN` | ARN del tópico SNS `reservas-eventos` |
 | `HORAS_MIN_CANCELACION` | Opcional. Horas mínimas de anticipación (por defecto 1) |
+| `UTC_OFFSET` | Opcional. Zona del club para la hora del correo (por defecto -6) |
 
 ## Permisos IAM del rol de la Lambda
 
@@ -76,51 +78,23 @@ Content-Type: application/json
 
 ## Despliegue
 
-Requisitos: AWS CLI v2 configurado (`aws configure`), `zip` y las tablas y el tópico SNS ya creados.
+Se despliega junto con todo lo demás con los scripts de `infra/` (ver el README):
 
 ```bash
-zip cancelar_reserva.zip cancelar_reserva.py
-
-aws lambda create-function \
-  --function-name cancelar-reserva \
-  --runtime python3.12 \
-  --handler cancelar_reserva.lambda_handler \
-  --role <ARN_DEL_ROL_LAMBDA> \
-  --zip-file fileb://cancelar_reserva.zip \
-  --environment "Variables={TABLA_RESERVAS=<TABLA_RESERVAS>,TABLA_SLOTS=<TABLA_SLOTS>,TOPIC_ARN=<ARN_TOPICO_SNS>,HORAS_MIN_CANCELACION=1}"
+bash infra/crear.sh
+bash infra/desplegar.sh
 ```
 
-Para actualizar el código:
+`desplegar.sh` crea o actualiza la Lambda `fieldres-cancelar-reserva`, le pasa las variables de entorno y conecta la ruta `DELETE /reservas/{reservaId}` en la HTTP API (stage `$default`, con CORS).
 
-```bash
-aws lambda update-function-code \
-  --function-name cancelar-reserva \
-  --zip-file fileb://cancelar_reserva.zip
-```
-
-### API Gateway
-
-Crear la ruta `DELETE /reservas/{reservaId}` con integración proxy hacia la Lambda `cancelar-reserva`, y habilitar CORS si el frontend está en otro origen. Después desplegar la API en un stage `<TODO: nombre del stage>`.
-
-### Notificaciones
-
-Suscribir un correo al tópico y confirmar el mensaje que llega a la bandeja:
-
-```bash
-aws sns subscribe \
-  --topic-arn <ARN_TOPICO_SNS> \
-  --protocol email \
-  --notification-endpoint <correo@ejemplo.com>
-```
-
-Sin la confirmación no llegan notificaciones, y las suscripciones sin confirmar caducan a los 3 días.
+Para recibir el correo, el usuario da clic en **Activar avisos** en el frontend y confirma la suscripción que le llega.
 
 ## Cómo probarlo
 
 ```bash
-curl -X DELETE "https://<API_ID>.execute-api.<REGION>.amazonaws.com/<STAGE>/reservas/<RESERVA_ID>" \
+curl -X DELETE "<API>/reservas/<RESERVA_ID>" \
   -H "Content-Type: application/json" \
-  -d '{"userId": "<USER_ID>"}'
+  -d '{"userId": "<correo>"}'
 ```
 
 Verificación esperada:
@@ -133,7 +107,7 @@ Verificación esperada:
 
 ## Evento SNS publicado
 
-Mensaje:
+El correo llega con texto legible (cancha, fecha, hora y folio). Otros suscriptores, por ejemplo una cola SQS, reciben el JSON:
 
 ```json
 {
@@ -155,16 +129,11 @@ Atributos del mensaje: `tipo = CANCELADA` y `userId`, que permiten filtrar suscr
 - **SNS en lugar de SES:** el correo se entrega con suscripciones por email de SNS, con filtros por atributo.
 - **Validación de propiedad:** solo el dueño de la reserva puede cancelarla.
 
-## Estado actual
+## Pruebas
 
-| Componente | Estado |
-|------------|--------|
-| Lambda `cancelar-reserva` | `<TODO: en la nube / local>` |
-| Ruta en API Gateway | `<TODO>` |
-| Notificación por correo (SNS) | `<TODO>` |
+`tests/test_flujo2.py`: cancela y libera el horario, el horario se puede volver a reservar, solo el dueño cancela, reserva inexistente, no se cancela dos veces, ventana de 1 hora y validación de entrada.
 
-### Pendiente
+## Pendiente
 
 - Lista de espera al cancelar (cola SQS suscrita al tópico)
-- Pruebas unitarias
 - Métricas y alarmas en CloudWatch

@@ -15,7 +15,11 @@ sns = boto3.client("sns")
 TABLA_RESERVAS = os.environ["TABLA_RESERVAS"]
 TABLA_SLOTS = os.environ["TABLA_SLOTS"]
 TOPIC_ARN = os.environ["TOPIC_ARN"]
+TABLA_CANCHAS = os.environ.get("TABLA_CANCHAS", "")
 HORAS_MIN_CANCELACION = int(os.environ.get("HORAS_MIN_CANCELACION", "1"))
+UTC_OFFSET = int(os.environ.get("UTC_OFFSET", "-6"))
+
+ZONA_CLUB = timezone(timedelta(hours=UTC_OFFSET))
 
 
 def _resp(status, body):
@@ -36,15 +40,36 @@ def _parse_fecha(valor):
     return fecha
 
 
+def _nombre_cancha(cancha_id):
+    if not TABLA_CANCHAS:
+        return cancha_id
+    try:
+        res = dynamodb.get_item(TableName=TABLA_CANCHAS, Key={"canchaId": {"S": cancha_id}})
+        return res.get("Item", {}).get("nombre", {}).get("S", cancha_id)
+    except ClientError:
+        return cancha_id
+
+
+def _mensaje_correo(evento, nombre_cancha):
+    local = _parse_fecha(evento["fechaHora"]).astimezone(ZONA_CLUB)
+    return (
+        "Tu reserva en Field Res fue cancelada y el horario quedo libre.\n\n"
+        f"Cancha: {nombre_cancha}\n"
+        f"Fecha: {local.strftime('%d/%m/%Y')}\n"
+        f"Hora: {local.strftime('%H:%M')}\n"
+        f"Folio: {evento['reservaId']}\n"
+    )
+
+
 def lambda_handler(event, context):
     # 1. Validacion del input
     try:
-        reserva_id = event["pathParameters"]["reservaId"]
+        reserva_id = event["pathParameters"]["reservaId"].strip()
         body = json.loads(event.get("body") or "{}")
-        user_id = body["userId"]
+        user_id = body["userId"].strip().lower()
         if not reserva_id or not user_id:
             raise ValueError("vacio")
-    except (KeyError, TypeError, ValueError):
+    except (KeyError, TypeError, ValueError, AttributeError):
         return _resp(400, {"error": "Se requieren reservaId (ruta) y userId (body)"})
 
     # 2. Buscar la reserva
@@ -126,7 +151,11 @@ def lambda_handler(event, context):
         sns.publish(
             TopicArn=TOPIC_ARN,
             Subject="Reserva cancelada - Field Res",
-            Message=json.dumps(evento),
+            MessageStructure="json",
+            Message=json.dumps({
+                "default": json.dumps(evento),
+                "email": _mensaje_correo(evento, _nombre_cancha(cancha_id)),
+            }),
             MessageAttributes={
                 "tipo": {"DataType": "String", "StringValue": "CANCELADA"},
                 "userId": {"DataType": "String", "StringValue": user_id},
