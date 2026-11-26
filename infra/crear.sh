@@ -56,6 +56,19 @@ echo "-> bucket $BUCKET_FOTOS"
 if ! existe_bucket "$BUCKET_FOTOS"; then
   aws s3api create-bucket --bucket "$BUCKET_FOTOS" >/dev/null
 fi
+# las fotos de las canchas se leen directo desde el navegador
+aws s3api put-public-access-block \
+  --bucket "$BUCKET_FOTOS" \
+  --public-access-block-configuration BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=false,RestrictPublicBuckets=false
+aws s3api put-bucket-policy --bucket "$BUCKET_FOTOS" --policy "{
+  \"Version\": \"2012-10-17\",
+  \"Statement\": [{
+    \"Effect\": \"Allow\",
+    \"Principal\": \"*\",
+    \"Action\": \"s3:GetObject\",
+    \"Resource\": \"arn:aws:s3:::${BUCKET_FOTOS}/canchas/*\"
+  }]
+}"
 
 echo "-> bucket $BUCKET_FRONTEND (sitio estatico)"
 if ! existe_bucket "$BUCKET_FRONTEND"; then
