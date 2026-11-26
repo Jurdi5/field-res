@@ -65,7 +65,12 @@
     </section>
 
     <div id="vista-app" class="hidden">
-    <div class="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
+    <nav class="relative mb-4 inline-flex rounded-xl bg-white p-1 shadow-lg shadow-slate-900/5 ring-1 ring-slate-200" aria-label="Secciones">
+      <button type="button" data-tab="reservar" class="tab rounded-lg px-4 py-2 text-sm font-semibold transition">Reservar</button>
+      <button type="button" data-tab="admin" class="tab rounded-lg px-4 py-2 text-sm font-semibold transition">Administrar canchas</button>
+    </nav>
+
+    <div id="vista-reservar" class="relative grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
 
       <section class="min-w-0 rounded-2xl bg-white p-5 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200 sm:p-7">
         <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-cancha-600">
@@ -118,6 +123,56 @@
           <button id="btn-suscribir" class="mt-4 w-full rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-cancha-700 transition hover:bg-cancha-50">Activar avisos</button>
         </section>
       </aside>
+    </div>
+
+    <div id="vista-admin" class="hidden">
+    <div class="relative gap-6 lg:grid lg:grid-cols-[380px_minmax(0,1fr)] lg:items-start">
+      <section class="rounded-2xl bg-white p-5 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200 sm:p-7">
+        <h2 class="text-lg font-bold">Nueva cancha</h2>
+        <p class="mt-1 text-sm text-slate-500">La cancha aparece para reservar en cuanto la guardas.</p>
+        <form id="form-cancha" class="mt-5 space-y-4">
+          <label class="block">
+            <span class="text-sm font-medium text-slate-700">Nombre</span>
+            <input id="cancha-nombre" required maxlength="40" placeholder="Cancha 4"
+              class="mt-1 w-full rounded-xl border-0 bg-slate-50 px-4 py-2.5 ring-1 ring-slate-200 placeholder:text-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cancha-500">
+          </label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="block">
+              <span class="text-sm font-medium text-slate-700">Tipo</span>
+              <select id="cancha-tipo"
+                class="mt-1 w-full rounded-xl border-0 bg-slate-50 px-3 py-2.5 ring-1 ring-slate-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cancha-500">
+                <option>Panoramica</option>
+                <option>Techada</option>
+                <option>Exterior</option>
+              </select>
+            </label>
+            <label class="block">
+              <span class="text-sm font-medium text-slate-700">Precio por hora</span>
+              <input id="cancha-precio" type="number" required min="1" max="10000" step="1" value="450"
+                class="mt-1 w-full rounded-xl border-0 bg-slate-50 px-4 py-2.5 ring-1 ring-slate-200 focus:bg-white focus:outline-none focus:ring-2 focus:ring-cancha-500">
+            </label>
+          </div>
+          <div>
+            <span class="text-sm font-medium text-slate-700">Foto</span>
+            <label for="cancha-foto" id="foto-zona"
+              class="mt-1 flex aspect-video cursor-pointer flex-col items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 text-center transition hover:border-cancha-500">
+              <img id="foto-preview" alt="" class="hidden size-full object-cover">
+              <span id="foto-hint" class="px-4 text-sm text-slate-500">Da clic para elegir una foto<br><span class="text-xs text-slate-400">JPG, PNG o WEBP</span></span>
+            </label>
+            <input id="cancha-foto" type="file" accept="image/jpeg,image/png,image/webp" class="sr-only">
+          </div>
+          <button id="btn-guardar-cancha" type="submit"
+            class="w-full rounded-xl bg-cancha-600 px-4 py-3 font-semibold text-white shadow-sm transition hover:bg-cancha-700 disabled:cursor-not-allowed disabled:bg-slate-300">
+            Guardar cancha
+          </button>
+        </form>
+      </section>
+
+      <section class="mt-6 min-w-0 rounded-2xl bg-white p-5 shadow-xl shadow-slate-900/5 ring-1 ring-slate-200 sm:p-7 lg:mt-0">
+        <h2 class="text-lg font-bold">Canchas registradas</h2>
+        <div id="admin-canchas" class="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-3"></div>
+      </section>
+    </div>
     </div>
     </div>
   </main>

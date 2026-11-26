@@ -9,7 +9,11 @@ const estado = {
   canchaId: null,
   fecha: null,
   horario: null,
+  tab: "reservar",
+  foto: null,
 };
+
+const FOTO_MAX_LADO = 1280;
 
 function esc(texto) {
   return String(texto ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
@@ -90,6 +94,7 @@ async function cargarCanchas() {
   }
   estado.canchaId ??= estado.canchas[0]?.canchaId;
   pintarCanchas();
+  pintarAdmin();
   await cargarHorarios();
 }
 
@@ -98,10 +103,11 @@ function pintarCanchas() {
     const activa = c.canchaId === estado.canchaId;
     return `
       <button type="button" data-cancha="${esc(c.canchaId)}"
-        class="group relative rounded-xl p-4 text-left ring-1 transition ${activa ? "bg-cancha-50 ring-2 ring-cancha-500" : "bg-white ring-slate-200 hover:ring-cancha-200"}">
-        <span class="absolute right-3 top-3 grid size-5 place-items-center rounded-full ${activa ? "bg-cancha-500 text-white" : "ring-1 ring-slate-300"}">
+        class="group relative overflow-hidden rounded-xl p-4 text-left ring-1 transition ${activa ? "bg-cancha-50 ring-2 ring-cancha-500" : "bg-white ring-slate-200 hover:ring-cancha-200"}">
+        <span class="absolute right-3 top-3 z-10 grid size-5 place-items-center rounded-full ${activa ? "bg-cancha-500 text-white" : "bg-white ring-1 ring-slate-300"}">
           ${activa ? `<svg viewBox="0 0 24 24" class="size-3" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5L20 7"/></svg>` : ""}
         </span>
+        ${c.imagenUrl ? `<img src="${esc(c.imagenUrl)}" alt="" loading="lazy" class="-mx-4 -mt-4 mb-3 aspect-video w-[calc(100%+2rem)] max-w-none object-cover">` : ""}
         <p class="font-semibold">${esc(c.nombre)}</p>
         <p class="mt-0.5 text-sm text-slate-500">${esc(c.tipo || "Cancha")}</p>
         <p class="mt-3 text-sm"><span class="text-lg font-bold">$${esc(c.precioHora)}</span><span class="text-slate-500"> / hora</span></p>
@@ -297,6 +303,99 @@ function cerrarModal() {
   $("modal").classList.replace("flex", "hidden");
 }
 
+// ---- secciones ----
+
+function cambiarTab(tab) {
+  estado.tab = tab;
+  try { localStorage.setItem("fieldres-tab", tab); } catch {}
+  $("vista-reservar").classList.toggle("hidden", tab !== "reservar");
+  $("vista-admin").classList.toggle("hidden", tab !== "admin");
+  document.querySelectorAll("[data-tab]").forEach((b) => {
+    const activo = b.dataset.tab === tab;
+    b.classList.toggle("bg-cancha-600", activo);
+    b.classList.toggle("text-white", activo);
+    b.classList.toggle("text-slate-600", !activo);
+    b.classList.toggle("hover:bg-slate-100", !activo);
+  });
+}
+
+// ---- administrar canchas ----
+
+function pintarAdmin() {
+  $("admin-canchas").innerHTML = estado.canchas.map((c) => `
+    <article class="overflow-hidden rounded-xl ring-1 ring-slate-200">
+      ${c.imagenUrl
+        ? `<img src="${esc(c.imagenUrl)}" alt="Foto de ${esc(c.nombre)}" loading="lazy" class="aspect-video w-full object-cover">`
+        : `<div class="grid aspect-video place-items-center bg-slate-100 text-xs text-slate-400">Sin foto</div>`}
+      <div class="p-3">
+        <p class="font-semibold">${esc(c.nombre)}</p>
+        <p class="text-sm text-slate-500">${esc(c.tipo || "Cancha")} · $${esc(c.precioHora)} / hora</p>
+      </div>
+    </article>`).join("") || `<p class="text-sm text-slate-500">Todavia no hay canchas</p>`;
+}
+
+function reducirFoto(archivo) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(archivo);
+    img.onload = () => {
+      const escala = Math.min(1, FOTO_MAX_LADO / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * escala);
+      canvas.height = Math.round(img.height * escala);
+      canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", 0.85));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("No se pudo leer la imagen"));
+    };
+    img.src = url;
+  });
+}
+
+async function elegirFoto() {
+  const archivo = $("cancha-foto").files[0];
+  estado.foto = null;
+  $("foto-preview").classList.add("hidden");
+  $("foto-hint").classList.toggle("hidden", false);
+  if (!archivo) return;
+  try {
+    estado.foto = await reducirFoto(archivo);
+  } catch (e) {
+    avisar(e.message, true);
+    return;
+  }
+  $("foto-preview").src = estado.foto;
+  $("foto-preview").classList.toggle("hidden", false);
+  $("foto-hint").classList.add("hidden");
+}
+
+async function guardarCancha(e) {
+  e.preventDefault();
+  const boton = $("btn-guardar-cancha");
+  boton.disabled = true;
+  boton.textContent = "Guardando...";
+  try {
+    const r = await api("POST", "/canchas", {
+      nombre: $("cancha-nombre").value,
+      tipo: $("cancha-tipo").value,
+      precioHora: Number($("cancha-precio").value),
+      foto: estado.foto || undefined,
+    });
+    avisar(`${r.cancha.nombre} quedo registrada`);
+    $("form-cancha").reset();
+    $("cancha-foto").value = "";
+    await elegirFoto();
+    await cargarCanchas();
+  } catch (err) {
+    avisar(err.message, true);
+  }
+  boton.disabled = false;
+  boton.textContent = "Guardar cancha";
+}
+
 // ---- notificaciones ----
 
 async function suscribir() {
@@ -318,6 +417,12 @@ function init() {
   $("btn-suscribir").onclick = suscribir;
   $("btn-salir").onclick = salir;
   $("modal").onclick = (e) => e.target === $("modal") && cerrarModal();
+  $("form-cancha").onsubmit = guardarCancha;
+  $("cancha-foto").onchange = elegirFoto;
+  document.querySelectorAll("[data-tab]").forEach((b) => { b.onclick = () => cambiarTab(b.dataset.tab); });
+  let tab = "reservar";
+  try { tab = localStorage.getItem("fieldres-tab") || tab; } catch {}
+  cambiarTab(tab === "admin" ? "admin" : "reservar");
 
   if (!API) {
     avisar("Falta configurar la URL de la API (config.js)", true);
