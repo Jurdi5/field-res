@@ -80,7 +80,7 @@ Los scripts estan pensados para correr en la terminal del Learner Lab, que ya ti
    bash infra/desplegar.sh
    ```
 
-   Al final imprime la URL de la API y la del frontend.
+   Al final imprime la URL de la API y la del frontend. Del frontend salen dos: la de HTTPS y la del sitio web de S3 (solo HTTP). Algunas redes, como la de la universidad, cortan HTTP; en ese caso usar la de HTTPS.
 
 6. Probar que la API responde (cambiar `<API>` por la URL del paso anterior):
 
