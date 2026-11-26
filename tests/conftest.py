@@ -66,12 +66,14 @@ def aws(monkeypatch):
             "canchaId": {"S": "cancha-x"}, "nombre": {"S": "Cerrada"},
             "precioHora": {"N": "450"}, "activa": {"BOOL": False},
         })
+        boto3.client("s3").create_bucket(Bucket="fotos")
         topic = boto3.client("sns").create_topic(Name="reservas-eventos")["TopicArn"]
 
         monkeypatch.setenv("TABLA_RESERVAS", "reservas")
         monkeypatch.setenv("TABLA_SLOTS", "slots")
         monkeypatch.setenv("TABLA_CANCHAS", "canchas")
         monkeypatch.setenv("TOPIC_ARN", topic)
+        monkeypatch.setenv("BUCKET_FOTOS", "fotos")
         yield ddb
 
 
